@@ -1,0 +1,14 @@
+# Configuration du Bot Vector
+
+[roles]
+# ID du role staff qui a accès aux tickets
+staff_role_id = 1454324926239477913
+
+[channels]
+log_channel_id = 1454360546152415326
+
+[categories]
+partnership = 1454360625915367566
+recruitment = 1454360652700188786
+support = 1454360671427887175
+other = 1454360625915367566
