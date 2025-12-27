@@ -54,7 +54,7 @@ Si vous rencontrez l'erreur `linker 'link.exe' not found` lors de la compilation
    ```
    *La première compilation peut prendre un peu de temps car Rust compile toutes les dépendances.*
 
-## ▶Lancement
+## Lancement
 
 Pour lancer le bot :
 

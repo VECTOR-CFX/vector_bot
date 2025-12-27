@@ -3,8 +3,14 @@ mod commands;
 use poise::serenity_prelude as serenity;
 use std::env;
 use dotenv::dotenv;
+use std::time::Instant;
+use std::sync::{Arc, Mutex};
+use sysinfo::System;
 
-pub struct Data {} 
+pub struct Data {
+    pub start_time: Instant,
+    pub system_info: Arc<Mutex<System>>,
+} 
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
@@ -25,6 +31,7 @@ async fn main() {
         .options(poise::FrameworkOptions {
             commands: vec![
                 commands::general::hello(),
+                commands::info::info(),
             ],
             ..Default::default()
         })
@@ -33,7 +40,14 @@ async fn main() {
                 println!("Enregistrement des commandes slash pour le serveur {}...", guild_id);
                 poise::builtins::register_in_guild(ctx, &framework.options().commands, serenity::GuildId::new(guild_id)).await?;
                 println!("Le bot est prêt ! Connecté en tant que {}", _ready.user.name);
-                Ok(Data {})
+                
+                let mut sys = System::new_all();
+                sys.refresh_all();
+
+                Ok(Data {
+                    start_time: std::time::Instant::now(),
+                    system_info: Arc::new(Mutex::new(sys)),
+                })
             })
         })
         .build();
