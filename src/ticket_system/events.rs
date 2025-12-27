@@ -35,6 +35,19 @@ async fn handle_dm(
 ) -> Result<(), crate::Error> {
     let user_id = msg.author.id.get();
 
+    {
+        let store = data.ticket_store.read().await;
+        if let Some(info) = store.blacklist.get(&user_id) {
+            let embed = serenity::CreateEmbed::new()
+                .title("Accès refusé")
+                .description(format!("Vous avez été blacklisté du système de ticket.\n**Raison:** {}", info.reason))
+                .color(0xe74c3c);
+            
+            msg.channel_id.send_message(ctx, serenity::CreateMessage::new().embed(embed)).await?;
+            return Ok(());
+        }
+    }
+
     let ticket_channel_id = {
         let store = data.ticket_store.read().await;
         store.tickets.get(&user_id).map(|t| t.channel_id)

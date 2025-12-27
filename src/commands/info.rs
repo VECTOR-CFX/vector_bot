@@ -39,16 +39,22 @@ pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
 
     let command_count = ctx.framework().options().commands.len();
 
+    let blacklist_count = {
+        let store = data.ticket_store.read().await;
+        store.blacklist.len()
+    };
+
     ctx.send(poise::CreateReply::default().embed(serenity::CreateEmbed::new()
         .title("Informations & Statistiques")
         .color(0x3498db) 
-        .field("Uptime", uptime_str, true)
+        .field("⏱Uptime", uptime_str, true)
         .field("Latence API", format!("{:.2} ms", latency.as_millis()), true)
         .field("Commandes", command_count.to_string(), true)
         .field("Système", format!("{} {}", os_name, os_version), true)
         .field("Mémoire (Bot)", format!("{} MB", bot_memory_usage), true)
         .field("CPU (Bot)", format!("{:.2}%", bot_cpu_usage), true)
-        .field("Stack Technique", "Language: `Rust` \nFramework: `Poise`\nLib: `Serenity`", true)
+        .field("Blacklist Tickets", blacklist_count.to_string(), true)
+        .field("Stack Technique", "Language: `Rust` \nFramework: `Poise` \nLib: `Serenity`", false)
         .footer(serenity::CreateEmbedFooter::new("VECTOR • Développé avec ❤️ en Rust"))
         .timestamp(serenity::Timestamp::now())
     )).await?;

@@ -40,10 +40,19 @@ pub struct TicketInfo {
     pub has_been_reminded: bool, 
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BlacklistInfo {
+    pub reason: String,
+    pub by: u64, 
+    pub date: i64,
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct TicketStore {
     pub tickets: HashMap<u64, TicketInfo>,
     pub counts: HashMap<String, u32>, 
+    #[serde(default)] 
+    pub blacklist: HashMap<u64, BlacklistInfo>, 
 }
 
 impl TicketStore {

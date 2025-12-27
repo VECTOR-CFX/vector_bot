@@ -1,8 +1,9 @@
 {
   "tickets": {},
   "counts": {
-    "Recruitment": 2,
     "Other": 2,
-    "Support": 3
-  }
+    "Recruitment": 2,
+    "Support": 4
+  },
+  "blacklist": {}
 }

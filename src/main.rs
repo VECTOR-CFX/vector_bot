@@ -51,6 +51,8 @@ async fn main() {
                 commands::ticket::close(),
                 commands::ticket::rename(),
                 commands::moderation::clear(),
+                commands::moderation::blticket(),
+                commands::moderation::unblticket(),
             ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(ticket_system::events::handle_event(ctx, event, framework, data))
@@ -62,7 +64,7 @@ async fn main() {
                 println!("Enregistrement des commandes slash pour le serveur {}...", guild_id);
                 poise::builtins::register_in_guild(ctx, &framework.options().commands, serenity::GuildId::new(guild_id)).await?;
                 
-                ctx.set_activity(Some(serenity::ActivityData::streaming("DM FOR HELP", "https://twitch.tv/discord").expect("Erreur lors de la définition de l'activité")));
+                ctx.set_activity(Some(serenity::ActivityData::streaming("DM FOR SUPPORT", "https://twitch.tv/discord").expect("Erreur lors de la définition de l'activité")));
 
                 println!("Le bot est prêt ! Connecté en tant que {}", _ready.user.name);
                 
