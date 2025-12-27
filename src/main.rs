@@ -50,6 +50,7 @@ async fn main() {
                 commands::ticket::rep(),
                 commands::ticket::close(),
                 commands::ticket::rename(),
+                commands::moderation::clear(),
             ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(ticket_system::events::handle_event(ctx, event, framework, data))
