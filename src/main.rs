@@ -53,6 +53,7 @@ async fn main() {
                 commands::moderation::clear(),
                 commands::moderation::blticket(),
                 commands::moderation::unblticket(),
+                commands::profile::profil(),
             ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(ticket_system::events::handle_event(ctx, event, framework, data))

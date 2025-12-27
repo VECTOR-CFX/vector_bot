@@ -98,7 +98,7 @@ async fn handle_dm(
             ];
 
             let embed = serenity::CreateEmbed::new()
-                .title("Support Vector Bot")
+                .title("Support VECTOR Store")
                 .description("Please select your language / Veuillez choisir votre langue")
                 .color(0x5865F2);
 

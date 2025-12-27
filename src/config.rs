@@ -11,6 +11,7 @@ pub struct Config {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Roles {
     pub staff_role_id: u64,
+    pub client_role_id: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
