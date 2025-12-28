@@ -1,4 +1,4 @@
 /target
 /.env
 **/*.rs.bk
-.json
+database.db

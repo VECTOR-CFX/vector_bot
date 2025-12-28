@@ -2,6 +2,7 @@ use crate::{Context, Error};
 use poise::serenity_prelude as serenity;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use crate::ticket_system::structs::TicketInfo;
 
 #[poise::command(slash_command, guild_only)]
 pub async fn rep(
@@ -9,14 +10,17 @@ pub async fn rep(
     #[description = "Le message à envoyer à l'utilisateur"] message: String,
 ) -> Result<(), Error> {
     let data = ctx.data();
-    
     let channel_id = ctx.channel_id();
-    let ticket_store = data.ticket_store.read().await;
-    
-    let ticket = ticket_store.tickets.values().find(|t| t.channel_id == channel_id.get());
+
+    let ticket: Option<TicketInfo> = sqlx::query_as(
+        "SELECT * FROM tickets WHERE channel_id = ?"
+    )
+    .bind(channel_id.get() as i64)
+    .fetch_optional(&data.db)
+    .await?;
     
     if let Some(ticket) = ticket {
-        let user_id = serenity::UserId::new(ticket.user_id);
+        let user_id = serenity::UserId::new(ticket.user_id as u64);
         
         let dm_channel = user_id.create_dm_channel(&ctx).await?;
         
@@ -24,7 +28,7 @@ pub async fn rep(
         dm_channel.say(&ctx, content).await?;
         
         ctx.send(poise::CreateReply::default()
-            .content(format!("Message envoyé avec succès !"))
+            .content(format!("Message envoyé à <@{}> : {}", ticket.user_id, message))
             .ephemeral(true)
         ).await?;
         
@@ -45,29 +49,22 @@ pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
     let data = ctx.data();
     let channel_id = ctx.channel_id();
     
-    let ticket_opt = {
-        let mut store = data.ticket_store.write().await;
-        let mut found_uid = None;
-        for (uid, t) in &store.tickets {
-            if t.channel_id == channel_id.get() {
-                found_uid = Some(*uid);
-                break;
-            }
-        }
-        
-        if let Some(uid) = found_uid {
-            let t = store.tickets.remove(&uid).unwrap();
-            store.save(); 
-            Some(t)
-        } else {
-            None
-        }
-    };
+    let ticket: Option<TicketInfo> = sqlx::query_as(
+        "SELECT * FROM tickets WHERE channel_id = ?"
+    )
+    .bind(channel_id.get() as i64)
+    .fetch_optional(&data.db)
+    .await?;
 
-    if let Some(ticket) = ticket_opt {
-        ctx.defer().await?; 
+    if let Some(ticket) = ticket {
+        sqlx::query("DELETE FROM tickets WHERE user_id = ?")
+            .bind(ticket.user_id)
+            .execute(&data.db)
+            .await?;
 
-        let user_id = serenity::UserId::new(ticket.user_id);
+        ctx.defer().await?;
+
+        let user_id = serenity::UserId::new(ticket.user_id as u64);
         
         let mut messages = ctx.channel_id().messages(&ctx, serenity::GetMessages::new().limit(100)).await?;
         messages.reverse(); 
@@ -81,7 +78,7 @@ pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
         let mut transcript = String::new();
         transcript.push_str(&format!("=== TRANSCRIPT TICKET ===\n"));
         transcript.push_str(&format!("Utilisateur : {} (ID: {})\n", user_id, ticket.user_id));
-        transcript.push_str(&format!("Catégorie : {}\n", ticket.category.to_string()));
+        transcript.push_str(&format!("Catégorie : {}\n", ticket.category));
         transcript.push_str(&format!("Ouvert le : {}\n", open_date));
         transcript.push_str(&format!("Fermé le : {}\n", close_date));
         transcript.push_str(&format!("Message Initial : {}\n", ticket.initial_message));
@@ -148,14 +145,18 @@ pub async fn rename(
     ctx: Context<'_>,
     #[description = "Nouveau nom du salon"] new_name: String,
 ) -> Result<(), Error> {
-    let is_ticket = {
-        let store = ctx.data().ticket_store.read().await;
-        store.tickets.values().any(|t| t.channel_id == ctx.channel_id().get())
-    };
+    let data = ctx.data();
+    let channel_id = ctx.channel_id();
+
+    let is_ticket: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM tickets WHERE channel_id = ?)"
+    )
+    .bind(channel_id.get() as i64)
+    .fetch_one(&data.db)
+    .await?;
 
     if is_ticket {
-        let channel = ctx.channel_id();
-        channel.edit(&ctx, serenity::EditChannel::new().name(new_name)).await?;
+        channel_id.edit(&ctx, serenity::EditChannel::new().name(new_name)).await?;
         
         ctx.send(poise::CreateReply::default()
             .content("Salon renommé avec succès.")

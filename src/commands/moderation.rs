@@ -1,6 +1,5 @@
 use crate::{Context, Error};
 use poise::serenity_prelude as serenity;
-use crate::ticket_system::structs::BlacklistInfo;
 
 #[poise::command(slash_command, guild_only)]
 pub async fn clear(
@@ -71,18 +70,18 @@ pub async fn blticket(
         return Ok(());
     }
 
-    {
-        let mut store = data.ticket_store.write().await;
-        store.blacklist.insert(user.id.get(), BlacklistInfo {
-            reason: reason.clone(),
-            by: ctx.author().id.get(),
-            date: chrono::Utc::now().timestamp(),
-        });
-        store.save();
-    }
+    sqlx::query(
+        "INSERT INTO blacklist (user_id, reason, by_staff, date) VALUES (?, ?, ?, ?)"
+    )
+    .bind(user.id.get() as i64)
+    .bind(&reason)
+    .bind(ctx.author().id.get() as i64)
+    .bind(chrono::Utc::now().timestamp())
+    .execute(&data.db)
+    .await?;
 
     ctx.send(poise::CreateReply::default()
-        .content(format!("**{}** a été blacklisté des tickets pour la raison : *{}*", user.name, reason))
+        .content(format!("✅ **{}** a été blacklisté des tickets pour la raison : *{}*", user.name, reason))
         .ephemeral(true)
     ).await?;
 
@@ -110,14 +109,12 @@ pub async fn unblticket(
         return Ok(());
     }
 
-    let removed = {
-        let mut store = data.ticket_store.write().await;
-        let removed = store.blacklist.remove(&user.id.get());
-        store.save();
-        removed.is_some()
-    };
+    let result = sqlx::query("DELETE FROM blacklist WHERE user_id = ?")
+        .bind(user.id.get() as i64)
+        .execute(&data.db)
+        .await?;
 
-    if removed {
+    if result.rows_affected() > 0 {
         ctx.send(poise::CreateReply::default()
             .content(format!("**{}** a été retiré de la blacklist ticket.", user.name))
             .ephemeral(true)

@@ -39,10 +39,14 @@ pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
 
     let command_count = ctx.framework().options().commands.len();
 
-    let (blacklist_count, active_tickets_count) = {
-        let store = data.ticket_store.read().await;
-        (store.blacklist.len(), store.tickets.len())
-    };
+    let blacklist_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM blacklist")
+        .fetch_one(&data.db)
+        .await?;
+        
+    let active_tickets_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tickets")
+        .fetch_one(&data.db)
+        .await?;
+
 
     ctx.send(poise::CreateReply::default().embed(serenity::CreateEmbed::new()
         .title("Informations & Statistiques")

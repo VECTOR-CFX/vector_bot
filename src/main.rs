@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod database;
 mod ticket_system;
 mod voice_system;
 
@@ -10,18 +11,17 @@ use std::time::Instant;
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use std::collections::HashMap;
-use ticket_system::structs::{TicketState, TicketStore};
-use voice_system::structs::VoiceStore;
+use ticket_system::structs::TicketState;
 use config::Config;
 use tokio::sync::RwLock;
+use sqlx::{Pool, Sqlite};
 
 pub struct Data {
     pub start_time: Instant,
     pub system_info: Arc<Mutex<System>>,
     pub config: Config,
-    pub ticket_store: Arc<RwLock<TicketStore>>,
+    pub db: Pool<Sqlite>, 
     pub ticket_states: Arc<RwLock<HashMap<u64, TicketState>>>,
-    pub voice_store: Arc<RwLock<VoiceStore>>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -43,8 +43,8 @@ async fn main() {
         | serenity::GatewayIntents::GUILD_MESSAGES; 
 
     let config = Config::load().expect("Impossible de charger config.toml");
-    let ticket_store = TicketStore::load();
-    let voice_store = VoiceStore::load();
+    
+    let db = database::init_db().await.expect("Impossible d'initialiser la base de données");
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -84,19 +84,18 @@ async fn main() {
                     start_time: std::time::Instant::now(),
                     system_info: Arc::new(Mutex::new(sys)),
                     config: config.clone(),
-                    ticket_store: Arc::new(RwLock::new(ticket_store)),
+                    db: db.clone(),
                     ticket_states: Arc::new(RwLock::new(HashMap::new())),
-                    voice_store: Arc::new(RwLock::new(voice_store)),
                 };
 
-                let store_clone = data.ticket_store.clone();
+                let db_clone = data.db.clone();
                 let http_clone = ctx.http.clone();
                 
                 tokio::spawn(async move {
                     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600)); 
                     loop {
                         interval.tick().await;
-                        check_inactive_tickets(&store_clone, &http_clone).await;
+                        check_inactive_tickets(&db_clone, &http_clone).await;
                     }
                 });
 
@@ -107,54 +106,54 @@ async fn main() {
         
 
 async fn check_inactive_tickets(
-    store: &Arc<RwLock<TicketStore>>,
+    db: &Pool<Sqlite>,
     http: &serenity::Http,
 ) {
     let now = chrono::Utc::now().timestamp();
-    let tickets_to_close: Vec<u64> = {
-        let store_read = store.read().await;
-        store_read.tickets.iter()
-            .filter(|(_, t)| now - t.last_activity > 172800)
-            .map(|(uid, _)| *uid)
-            .collect()
-    };
     
-    let tickets_to_remind: Vec<u64> = {
-        let store_read = store.read().await;
-        store_read.tickets.iter()
-            .filter(|(_, t)| now - t.last_activity > 86400 && !t.has_been_reminded) 
-            .map(|(uid, _)| *uid)
-            .collect()
-    };
+    let threshold_close = now - 172800;
     
-    for uid in tickets_to_close {
-        let ticket_opt = {
-            let mut store_write = store.write().await;
-            store_write.tickets.remove(&uid)
-        };
+    let tickets_to_close: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT user_id, channel_id FROM tickets WHERE last_activity < ?"
+    )
+    .bind(threshold_close)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    
+    let threshold_remind = now - 86400;
+    
+    let tickets_to_remind: Vec<i64> = sqlx::query_scalar(
+        "SELECT user_id FROM tickets WHERE last_activity < ? AND has_been_reminded = 0"
+    )
+    .bind(threshold_remind)
+    .fetch_all(db)
+    .await
+    .unwrap_or_default();
+    
+    for (uid, channel_id) in tickets_to_close {
+        let _ = sqlx::query("DELETE FROM tickets WHERE user_id = ?")
+            .bind(uid)
+            .execute(db)
+            .await;
+            
+        let _ = serenity::ChannelId::new(channel_id as u64).delete(http).await;
         
-        if let Some(ticket) = ticket_opt {
-            let _ = store.write().await.save(); 
-            
-            let _ = serenity::ChannelId::new(ticket.channel_id).delete(http).await;
-            
-            let user_id = serenity::UserId::new(uid);
-            if let Ok(dm) = user_id.create_dm_channel(http).await {
-                let _ = dm.say(http, "Votre ticket a été fermé automatiquement suite à 48h d'inactivité.").await;
-            }
+        let user_id = serenity::UserId::new(uid as u64);
+        if let Ok(dm) = user_id.create_dm_channel(http).await {
+            let _ = dm.say(http, "Votre ticket a été fermé automatiquement suite à 48h d'inactivité.").await;
         }
     }
     
     for uid in tickets_to_remind {
-        let mut store_write = store.write().await;
-        if let Some(ticket) = store_write.tickets.get_mut(&uid) {
-            ticket.has_been_reminded = true;
-            let _ = store_write.save();
+        let _ = sqlx::query("UPDATE tickets SET has_been_reminded = 1 WHERE user_id = ?")
+            .bind(uid)
+            .execute(db)
+            .await;
             
-            let user_id = serenity::UserId::new(uid);
-            if let Ok(dm) = user_id.create_dm_channel(http).await {
-                let _ = dm.say(http, "Bonjour, votre ticket est inactif depuis 24h. Avez-vous toujours besoin d'aide ? Sans réponse de votre part, il sera fermé dans 24h.").await;
-            }
+        let user_id = serenity::UserId::new(uid as u64);
+        if let Ok(dm) = user_id.create_dm_channel(http).await {
+            let _ = dm.say(http, "Bonjour, votre ticket est inactif depuis 24h. Avez-vous toujours besoin d'aide ? Sans réponse de votre part, il sera fermé dans 24h.").await;
         }
     }
 }

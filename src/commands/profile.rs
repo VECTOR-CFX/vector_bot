@@ -17,10 +17,12 @@ pub async fn profil(
     let is_staff = member.roles.contains(&serenity::RoleId::new(data.config.roles.staff_role_id));
     let is_client = member.roles.contains(&serenity::RoleId::new(data.config.roles.client_role_id));
 
-    let is_blacklisted = {
-        let store = data.ticket_store.read().await;
-        store.blacklist.contains_key(&target_user.id.get())
-    };
+    let is_blacklisted: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM blacklist WHERE user_id = ?)"
+    )
+    .bind(target_user.id.get() as i64)
+    .fetch_one(&data.db)
+    .await?;
 
     let staff_status = if is_staff { "Oui" } else { "Non" };
     let client_status = if is_client { "Oui" } else { "Non" };

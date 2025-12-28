@@ -1,6 +1,6 @@
 use poise::serenity_prelude as serenity;
 use crate::Data;
-use crate::ticket_system::structs::{TicketState, TicketCategory, TicketInfo};
+use crate::ticket_system::structs::{TicketState, TicketCategory};
 
 pub async fn handle_event(
     ctx: &serenity::Context,
@@ -36,11 +36,17 @@ async fn handle_dm(
     let user_id = msg.author.id.get();
 
     {
-        let store = data.ticket_store.read().await;
-        if let Some(info) = store.blacklist.get(&user_id) {
+        let reason: Option<String> = sqlx::query_scalar(
+            "SELECT reason FROM blacklist WHERE user_id = ?"
+        )
+        .bind(user_id as i64)
+        .fetch_optional(&data.db)
+        .await?;
+
+        if let Some(reason) = reason {
             let embed = serenity::CreateEmbed::new()
                 .title("Accès refusé")
-                .description(format!("Vous avez été blacklisté du système de ticket.\n**Raison:** {}", info.reason))
+                .description(format!("Vous avez été blacklisté du système de ticket.\n**Raison:** {}", reason))
                 .color(0xe74c3c);
             
             msg.channel_id.send_message(ctx, serenity::CreateMessage::new().embed(embed)).await?;
@@ -48,27 +54,29 @@ async fn handle_dm(
         }
     }
 
-    let ticket_channel_id = {
-        let store = data.ticket_store.read().await;
-        store.tickets.get(&user_id).map(|t| t.channel_id)
-    };
+    let ticket_channel_id: Option<i64> = sqlx::query_scalar(
+        "SELECT channel_id FROM tickets WHERE user_id = ?"
+    )
+    .bind(user_id as i64)
+    .fetch_optional(&data.db)
+    .await?;
 
     if let Some(channel_id_u64) = ticket_channel_id {
-        let channel_id = serenity::ChannelId::new(channel_id_u64);
+        let channel_id = serenity::ChannelId::new(channel_id_u64 as u64);
         
         let content = format!("**{}**: {}", msg.author.name, msg.content);
         channel_id.say(ctx, content).await?;
         
         msg.react(ctx, serenity::ReactionType::Unicode("✅".to_string())).await?;
 
-        {
-            let mut store = data.ticket_store.write().await;
-            if let Some(ticket) = store.tickets.get_mut(&user_id) {
-                ticket.last_activity = chrono::Utc::now().timestamp();
-                ticket.has_been_reminded = false;
-                store.save();
-            }
-        }
+        sqlx::query(
+            "UPDATE tickets SET last_activity = ?, has_been_reminded = 0 WHERE user_id = ?"
+        )
+        .bind(chrono::Utc::now().timestamp())
+        .bind(user_id as i64)
+        .execute(&data.db)
+        .await?;
+        
         return Ok(());
     }
 
@@ -205,13 +213,20 @@ async fn create_ticket(
     let guild_id = std::env::var("DISCORD_GUILD_ID")?.parse::<u64>()?;
     let guild_id = serenity::GuildId::new(guild_id);
 
-    let count = {
-        let mut store = data.ticket_store.write().await;
-        let cat_key = format!("{:?}", category);
-        let count = store.counts.entry(cat_key.clone()).or_insert(0);
-        *count += 1;
-        *count
-    }; 
+    let category_key = format!("{:?}", category);
+    
+    sqlx::query(
+        "INSERT INTO ticket_counts (category, count) VALUES (?, 1) 
+         ON CONFLICT(category) DO UPDATE SET count = count + 1"
+    )
+    .bind(&category_key)
+    .execute(&data.db)
+    .await?;
+
+    let count: i32 = sqlx::query_scalar("SELECT count FROM ticket_counts WHERE category = ?")
+        .bind(&category_key)
+        .fetch_one(&data.db)
+        .await?;
 
     let category_id = match category {
         TicketCategory::Partnership => data.config.categories.partnership,
@@ -264,19 +279,19 @@ async fn create_ticket(
         .embed(embed)
     ).await?;
 
-    {
-        let mut store = data.ticket_store.write().await;
-        store.tickets.insert(user_id, TicketInfo {
-            user_id,
-            channel_id: channel.id.get(),
-            category: category.clone(),
-            created_at: chrono::Utc::now().timestamp(),
-            initial_message: msg.content.clone(),
-            last_activity: chrono::Utc::now().timestamp(),
-            has_been_reminded: false,
-        });
-        store.save();
-    }
+    sqlx::query(
+        "INSERT INTO tickets (user_id, channel_id, category, created_at, initial_message, last_activity, has_been_reminded) 
+         VALUES (?, ?, ?, ?, ?, ?, 0)"
+    )
+    .bind(user_id as i64)
+    .bind(channel.id.get() as i64)
+    .bind(format!("{:?}", category))
+    .bind(chrono::Utc::now().timestamp())
+    .bind(&msg.content)
+    .bind(chrono::Utc::now().timestamp())
+    .execute(&data.db)
+    .await?;
+
 
     let confirmation_message = if language == "FR" {
         "Votre ticket a été créé avec succès ! Un membre du staff va vous répondre bientôt."

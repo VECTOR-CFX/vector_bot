@@ -24,23 +24,30 @@ async fn handle_channel_delete(
     channel: &serenity::GuildChannel,
     data: &Data,
 ) -> Result<(), crate::Error> {
-    let is_managed = {
-        let store = data.voice_store.read().await;
-        store.channels.contains_key(&channel.id.get())
-    };
+    let is_managed: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM voice_channels WHERE channel_id = ?)"
+    )
+    .bind(channel.id.get() as i64)
+    .fetch_one(&data.db)
+    .await?;
 
     if is_managed {
-        let owner_id = {
-            let mut store = data.voice_store.write().await;
-            let owner = store.channels.remove(&channel.id.get());
-            store.save();
-            owner
-        };
+        let owner_id: Option<i64> = sqlx::query_scalar(
+            "SELECT owner_id FROM voice_channels WHERE channel_id = ?"
+        )
+        .bind(channel.id.get() as i64)
+        .fetch_optional(&data.db)
+        .await?;
+
+        sqlx::query("DELETE FROM voice_channels WHERE channel_id = ?")
+            .bind(channel.id.get() as i64)
+            .execute(&data.db)
+            .await?;
 
         if let Some(uid) = owner_id {
             let log_channel = serenity::ChannelId::new(data.config.channels.voice_log_channel_id);
             let embed = serenity::CreateEmbed::new()
-                .title("Vocal Supprimé Manuellement")
+                .title("🗑️ Vocal Supprimé Manuellement")
                 .description(format!("Le salon vocal <#{}> a été supprimé (probablement par son propriétaire ou un admin).", channel.id))
                 .field("Ancien Propriétaire", format!("<@{}>", uid), true)
                 .color(0xe74c3c)
@@ -67,10 +74,12 @@ async fn handle_voice_update(
 
     if let Some(old_state) = old {
         if let Some(channel_id) = old_state.channel_id {
-            let is_temp_channel = {
-                let store = data.voice_store.read().await;
-                store.channels.contains_key(&channel_id.get())
-            };
+            let is_temp_channel: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM voice_channels WHERE channel_id = ?)"
+            )
+            .bind(channel_id.get() as i64)
+            .fetch_one(&data.db)
+            .await?;
 
             if is_temp_channel {
                 let channel = channel_id.to_channel(ctx).await?.guild().unwrap();
@@ -82,14 +91,19 @@ async fn handle_voice_update(
                     delete_voice_channel(ctx, channel_id, data).await?;
                 } else {
                     let user_id = old_state.user_id;
-                    let owner_id = {
-                        let store = data.voice_store.read().await;
-                        *store.channels.get(&channel_id.get()).unwrap()
-                    };
+                    
+                    let owner_id: Option<i64> = sqlx::query_scalar(
+                        "SELECT owner_id FROM voice_channels WHERE channel_id = ?"
+                    )
+                    .bind(channel_id.get() as i64)
+                    .fetch_optional(&data.db)
+                    .await?;
 
-                    if user_id.get() == owner_id {
-                        if let Some(new_owner) = human_members.first() {
-                            transfer_ownership(ctx, channel_id, new_owner.user.id, data).await?;
+                    if let Some(owner_id) = owner_id {
+                        if user_id.get() as i64 == owner_id {
+                            if let Some(new_owner) = human_members.first() {
+                                transfer_ownership(ctx, channel_id, new_owner.user.id, data).await?;
+                            }
                         }
                     }
                 }
@@ -137,11 +151,11 @@ async fn create_voice_channel(
 
     guild_id.edit_member(ctx, user.id, serenity::EditMember::new().voice_channel(channel.id)).await?;
 
-    {
-        let mut store = data.voice_store.write().await;
-        store.channels.insert(channel.id.get(), user.id.get());
-        store.save();
-    }
+    sqlx::query("INSERT INTO voice_channels (channel_id, owner_id) VALUES (?, ?)")
+        .bind(channel.id.get() as i64)
+        .bind(user.id.get() as i64)
+        .execute(&data.db)
+        .await?;
 
     let log_channel = serenity::ChannelId::new(data.config.channels.voice_log_channel_id);
     let embed = serenity::CreateEmbed::new()
@@ -160,12 +174,17 @@ async fn delete_voice_channel(
     channel_id: serenity::ChannelId,
     data: &Data,
 ) -> Result<(), crate::Error> {
-    let owner_id = {
-        let mut store = data.voice_store.write().await;
-        let owner = store.channels.remove(&channel_id.get());
-        store.save();
-        owner
-    };
+    let owner_id: Option<i64> = sqlx::query_scalar(
+        "SELECT owner_id FROM voice_channels WHERE channel_id = ?"
+    )
+    .bind(channel_id.get() as i64)
+    .fetch_optional(&data.db)
+    .await?;
+
+    sqlx::query("DELETE FROM voice_channels WHERE channel_id = ?")
+        .bind(channel_id.get() as i64)
+        .execute(&data.db)
+        .await?;
 
     channel_id.delete(ctx).await?;
 
@@ -198,15 +217,16 @@ async fn transfer_ownership(
 
     channel_id.create_permission(ctx, permissions).await?;
     
-    {
-        let mut store = data.voice_store.write().await;
-        store.channels.insert(channel_id.get(), new_owner_id.get());
-        store.save();
-    }
+    // Mettre à jour la DB
+    sqlx::query("UPDATE voice_channels SET owner_id = ? WHERE channel_id = ?")
+        .bind(new_owner_id.get() as i64)
+        .bind(channel_id.get() as i64)
+        .execute(&data.db)
+        .await?;
     
     let log_channel = serenity::ChannelId::new(data.config.channels.voice_log_channel_id);
     let embed = serenity::CreateEmbed::new()
-        .title("Transfert de propriété")
+        .title("Transfert de Propriété")
         .description(format!("**Nouveau Propriétaire :** <@{}>\n**Salon :** <#{}>", new_owner_id, channel_id))
         .color(0xf1c40f)
         .timestamp(serenity::Timestamp::now());
