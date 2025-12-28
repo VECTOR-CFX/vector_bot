@@ -19,6 +19,7 @@ pub struct Channels {
     pub log_channel_id: u64,
     pub jtc_channel_ids: Vec<u64>,
     pub voice_log_channel_id: u64,
+    pub giveaway_log_channel_id: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]

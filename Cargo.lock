@@ -2718,6 +2718,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "poise",
+ "rand 0.9.2",
  "serde",
  "serde_json",
  "sqlx",

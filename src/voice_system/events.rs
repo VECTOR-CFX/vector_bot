@@ -217,7 +217,6 @@ async fn transfer_ownership(
 
     channel_id.create_permission(ctx, permissions).await?;
     
-    // Mettre à jour la DB
     sqlx::query("UPDATE voice_channels SET owner_id = ? WHERE channel_id = ?")
         .bind(new_owner_id.get() as i64)
         .bind(channel_id.get() as i64)

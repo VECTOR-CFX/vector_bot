@@ -47,5 +47,27 @@ pub async fn init_db() -> Result<Pool<Sqlite>, sqlx::Error> {
         )"
     ).execute(&pool).await?;
 
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS giveaways (
+            message_id INTEGER PRIMARY KEY,
+            channel_id INTEGER NOT NULL,
+            host_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            reward TEXT NOT NULL,
+            winner_count INTEGER NOT NULL,
+            end_time INTEGER NOT NULL,
+            status TEXT NOT NULL
+        )"
+    ).execute(&pool).await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS giveaway_participants (
+            giveaway_message_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            PRIMARY KEY (giveaway_message_id, user_id)
+        )"
+    ).execute(&pool).await?;
+
     Ok(pool)
 }

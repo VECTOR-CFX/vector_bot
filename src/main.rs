@@ -3,6 +3,7 @@ mod config;
 mod database;
 mod ticket_system;
 mod voice_system;
+mod giveaway_system;
 
 use poise::serenity_prelude as serenity;
 use std::env;
@@ -58,11 +59,13 @@ async fn main() {
                 commands::moderation::blticket(),
                 commands::moderation::unblticket(),
                 commands::profile::profil(),
+                commands::giveaway::giveaway(),
             ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(async move {
                     ticket_system::events::handle_event(ctx, event, framework, data).await?;
                     voice_system::events::handle_event(ctx, event, framework, data).await?;
+                    giveaway_system::events::handle_event(ctx, event, framework, data).await?;
                     Ok(())
                 })
             },
@@ -96,6 +99,18 @@ async fn main() {
                     loop {
                         interval.tick().await;
                         check_inactive_tickets(&db_clone, &http_clone).await;
+                    }
+                });
+
+                let db_clone_gw = data.db.clone();
+                let http_clone_gw = ctx.http.clone();
+                let log_gw = config.channels.giveaway_log_channel_id;
+                
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5)); 
+                    loop {
+                        interval.tick().await;
+                        giveaway_system::events::check_giveaways(&db_clone_gw, &http_clone_gw, log_gw).await;
                     }
                 });
 

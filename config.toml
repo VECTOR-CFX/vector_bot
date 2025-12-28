@@ -12,6 +12,8 @@ log_channel_id = 1454360546152415326
 jtc_channel_ids = [1454670530811527259, 1454670834756092080]
 # Salon de logs pour les vocaux
 voice_log_channel_id = 1454674499269034097
+# Salon de logs pour les giveaways
+giveaway_log_channel_id = 1454739424415055902
 
 [categories]
 # ID des catégories Discord où les tickets seront créés
