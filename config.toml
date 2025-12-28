@@ -1,25 +1,18 @@
 # Configuration du Bot Vector
 
 [roles]
-# ID du role staff qui a accès aux tickets
 staff_role_id = 1454531696006529197
 client_role_id = 1454325225411051610
 
 [channels]
-# ID du salon où seront envoyés les logs (transcripts) des tickets
 log_channel_id = 1454360546152415326
-# Liste des salons "Rejoindre pour créer" (Join to Create)
 jtc_channel_ids = [1454670530811527259, 1454670834756092080]
-# Salon de logs pour les vocaux
 voice_log_channel_id = 1454674499269034097
-# Salon de logs pour les giveaways
 giveaway_log_channel_id = 1454739424415055902
 
 [categories]
-# ID des catégories Discord où les tickets seront créés
 partnership = 1454360625915367566
 recruitment = 1454360652700188786
 support = 1454360671427887175
 other = 1454360625915367566
-# Catégorie où les salons vocaux temporaires seront créés
 voice_category_id = 1454670962011410605
