@@ -17,6 +17,8 @@ pub struct Roles {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Channels {
     pub log_channel_id: u64,
+    pub jtc_channel_ids: Vec<u64>,
+    pub voice_log_channel_id: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -25,6 +27,7 @@ pub struct Categories {
     pub recruitment: u64,
     pub support: u64,
     pub other: u64,
+    pub voice_category_id: u64,
 }
 
 impl Config {

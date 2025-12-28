@@ -56,7 +56,7 @@ pub async fn info(ctx: Context<'_>) -> Result<(), Error> {
         .field("Blacklist Tickets", blacklist_count.to_string(), true)
         .field("Tickets Actifs", active_tickets_count.to_string(), true)
         .field("Stack Technique", "Language: `Rust` \nFramework: `Poise` \nLib: `Serenity`", false)
-        .footer(serenity::CreateEmbedFooter::new("VECTOR • Développé avec ❤️ en Rust"))
+        .footer(serenity::CreateEmbedFooter::new("VECTOR © • Développé avec ❤️ en Rust"))
         .timestamp(serenity::Timestamp::now())
     )).await?;
 

@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod ticket_system;
+mod voice_system;
 
 use poise::serenity_prelude as serenity;
 use std::env;
@@ -10,6 +11,7 @@ use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use std::collections::HashMap;
 use ticket_system::structs::{TicketState, TicketStore};
+use voice_system::structs::VoiceStore;
 use config::Config;
 use tokio::sync::RwLock;
 
@@ -18,7 +20,8 @@ pub struct Data {
     pub system_info: Arc<Mutex<System>>,
     pub config: Config,
     pub ticket_store: Arc<RwLock<TicketStore>>,
-    pub ticket_states: Arc<RwLock<HashMap<u64, TicketState>>>, 
+    pub ticket_states: Arc<RwLock<HashMap<u64, TicketState>>>,
+    pub voice_store: Arc<RwLock<VoiceStore>>,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -41,6 +44,7 @@ async fn main() {
 
     let config = Config::load().expect("Impossible de charger config.toml");
     let ticket_store = TicketStore::load();
+    let voice_store = VoiceStore::load();
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -56,7 +60,11 @@ async fn main() {
                 commands::profile::profil(),
             ],
             event_handler: |ctx, event, framework, data| {
-                Box::pin(ticket_system::events::handle_event(ctx, event, framework, data))
+                Box::pin(async move {
+                    ticket_system::events::handle_event(ctx, event, framework, data).await?;
+                    voice_system::events::handle_event(ctx, event, framework, data).await?;
+                    Ok(())
+                })
             },
             ..Default::default()
         })
@@ -65,7 +73,7 @@ async fn main() {
                 println!("Enregistrement des commandes slash pour le serveur {}...", guild_id);
                 poise::builtins::register_in_guild(ctx, &framework.options().commands, serenity::GuildId::new(guild_id)).await?;
                 
-                ctx.set_activity(Some(serenity::ActivityData::streaming("DM FOR SUPPORT", "https://twitch.tv/discord").expect("Erreur lors de la définition de l'activité")));
+                ctx.set_activity(Some(serenity::ActivityData::streaming("DM FOR HELP", "https://twitch.tv/discord").expect("Erreur lors de la définition de l'activité")));
 
                 println!("Le bot est prêt ! Connecté en tant que {}", _ready.user.name);
                 
@@ -78,6 +86,7 @@ async fn main() {
                     config: config.clone(),
                     ticket_store: Arc::new(RwLock::new(ticket_store)),
                     ticket_states: Arc::new(RwLock::new(HashMap::new())),
+                    voice_store: Arc::new(RwLock::new(voice_store)),
                 };
 
                 let store_clone = data.ticket_store.clone();

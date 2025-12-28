@@ -40,7 +40,7 @@ pub async fn profil(
             .field("Staff", staff_status, true)
             .field("Client", client_status, true)
             .field("Blacklist Ticket", blacklist_status, true)
-            .footer(serenity::CreateEmbedFooter::new("VECTOR"))
+            .footer(serenity::CreateEmbedFooter::new("VECTOR ©"))
             .timestamp(serenity::Timestamp::now())
         )
     ).await?;
