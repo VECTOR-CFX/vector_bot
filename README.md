@@ -1,72 +1,99 @@
-# Vector Bot (Rust)
+# Vector Bot
 
-Ce projet est une base solide et optimisée pour un bot Discord écrit en Rust, utilisant le framework [Poise](https://github.com/serenity-rs/poise) (basé sur [Serenity](https://github.com/serenity-rs/serenity)).
+Un bot Discord multifonction développé en Rust avec le framework Poise et la librairie Serenity.
 
 ## Fonctionnalités
-- **Architecture propre** : Structure modulaire pour ajouter facilement de nouvelles commandes.
-- **Commandes Slash** : Support natif des commandes slash (`/`).
-- **Configuration simple** : Utilisation de variables d'environnement (`.env`).
-- **Performance** : Construit sur l'écosystème asynchrone Rust (Tokio).
 
-## Prérequis
+### Système de Tickets
 
-Avant de commencer, assurez-vous d'avoir installé **Rust** et **Cargo** sur votre machine.
-Si ce n'est pas le cas, installez-les via [rustup.rs](https://rustup.rs/) :
+- **Création interactive** :
+  - Déclenchement par message privé (DM) au bot.
+  - Choix de la langue (Français/Anglais).
+  - Choix de la catégorie (Partenariat, Recrutement, Support, Autres).
+  - Création automatique d'un salon privé sur le serveur.
+  - Permissions configurées automatiquement (Staff + Utilisateur + Bot).
 
-```bash
-# Sur Linux/macOS
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+- **Gestion** :
+  - `/rep <message>` : Permet au staff de répondre à l'utilisateur de manière anonyme ("Support: Message").
+  - `/close` : Ferme le ticket, supprime le salon, envoie un transcript complet (fichier .txt) dans les logs et notifie l'utilisateur.
+  - `/rename <nom>` : Permet de renommer le salon du ticket.
 
-# Sur Windows
-# Téléchargez et lancez rustup-init.exe depuis le site officiel.
+- **Automatisation** :
+  - Relance automatique par DM après 24h d'inactivité.
+  - Fermeture automatique après 48h d'inactivité.
+
+- **Modération des Tickets** :
+  - `/blticket @user <raison>` : Blacklist un utilisateur (l'empêche d'ouvrir des tickets).
+  - `/unblticket @user` : Retire un utilisateur de la blacklist.
+  - Vérification automatique à chaque message privé.
+
+### Système Vocal (Join to Create)
+
+- **Création Automatique** :
+  - Rejoindre un salon "Hub" (configuré dans `config.toml`) crée un salon vocal temporaire.
+  - Nom du salon : `🔉〢Pseudo`.
+  - Le créateur devient propriétaire.
+
+- **Gestion** :
+  - Le propriétaire a les permissions de modération sur son salon (Mute, Deafen, Move, Manage Channels).
+  - Suppression automatique du salon quand il est vide.
+  - Transfert automatique de propriété si le propriétaire quitte (mais qu'il reste du monde).
+
+- **Logs** :
+  - Logs de création, suppression et transfert de propriété dans un salon dédié.
+  - Détection et log si un salon est supprimé manuellement.
+
+### Commandes Utilitaires
+
+- `/info` : Affiche les statistiques du bot (Uptime, Latence, RAM, CPU, Tickets actifs, Blacklists).
+- `/profil [@user]` : Affiche le profil d'un utilisateur (Date création, Date arrivée, Statut Staff/Client, Statut Blacklist).
+- `/clear <nombre>` : Supprime un nombre défini de messages (max 99).
+- `/hello` : Commande de test basique.
+
+## Configuration
+
+Le bot se configure via le fichier `config.toml` :
+
+```toml
+[roles]
+staff_role_id = 123456789...
+client_role_id = 123456789...
+
+[channels]
+log_channel_id = 123456789...
+voice_log_channel_id = 123456789...
+jtc_channel_ids = [123456789..., 987654321...]
+
+[categories]
+partnership = 123456789...
+recruitment = 123456789...
+support = 123456789...
+other = 123456789...
+voice_category_id = 123456789...
 ```
 
-### Problème courant sur Windows : `linker 'link.exe' not found`
+## Base de Données
 
-Si vous rencontrez l'erreur `linker 'link.exe' not found` lors de la compilation, c'est qu'il vous manque les outils de compilation C++.
+Le bot utilise SQLite (`database.db`) pour stocker :
+- Les tickets actifs.
+- La blacklist des tickets.
+- Les salons vocaux temporaires.
+- Les compteurs de tickets.
 
-**Solution :**
-1. Téléchargez et installez **Visual Studio Build Tools** (ou Visual Studio Community).
-2. Lors de l'installation, cochez la case **"Développement Desktop en C++"** (Desktop development with C++).
-3. Laissez l'installation se terminer et redémarrez votre terminal (ou votre PC).
+## Installation et Lancement
 
-## Installation
-
-1. **Cloner le projet** (si ce n'est pas déjà fait) :
-   ```bash
-   git clone <votre-repo>
-   cd vector_bot
+1. Cloner le dépôt.
+2. Créer un fichier `.env` avec :
    ```
-
-3. **Configuration** :
-   - Créez un fichier nommé `.env` à la racine du projet (à côté de `Cargo.toml`).
-   - Copiez le contenu de `.env.example` ou ajoutez simplement votre token et l'ID de votre serveur :
-     ```env
-     DISCORD_TOKEN=votre_token_discord_ici
-     DISCORD_GUILD_ID=votre_id_serveur_ici
-     ```
-     > **Pour trouver l'ID de votre serveur** : Activez le mode développeur dans les paramètres Discord (Avancé > Mode développeur), puis faites un clic droit sur l'icône de votre serveur > "Copier l'identifiant".
+   DISCORD_TOKEN=votre_token
+   DISCORD_GUILD_ID=votre_id_serveur
+   ```
+   > Pour trouver l'ID de votre serveur : Activez le mode développeur dans les paramètres Discord (Avancé > Mode développeur), puis faites un clic droit sur l'icône de votre serveur > "Copier l'identifiant".
+   
    > **IMPORTANT** : Ne partagez jamais votre fichier `.env` et ne le commitez jamais sur Git (il est déjà ignoré par `.gitignore`).
 
-3. **Compiler le projet** :
-   ```bash
-   cargo build
-   ```
-   *La première compilation peut prendre un peu de temps car Rust compile toutes les dépendances.*
-
-## Lancement
-
-Pour lancer le bot :
-
-```bash
-cargo run
-```
-
-Si tout fonctionne, vous verrez :
-- `Enregistrement des commandes slash...`
-- `Le bot est prêt ! Connecté en tant que [NomDuBot]`
-
-Vous pourrez alors aller sur votre serveur Discord et taper `/hello` pour tester !
+3. Configurer `config.toml`.
+4. Lancer avec `cargo run`.
 
 ## Notes Importantes
 
@@ -74,6 +101,16 @@ Vous pourrez alors aller sur votre serveur Discord et taper `/hello` pour tester
 
 ## Documentation
 
-- [Guide Poise](https://docs.rs/poise/latest/poise/)
+- [Guide Poise](https://github.com/serenity-rs/poise)
 - [Documentation Serenity](https://docs.rs/serenity/latest/serenity/)
 - [Livre Rust (The Rust Book)](https://doc.rust-lang.org/book/)
+
+## Problème courant sur Windows : `linker 'link.exe' not found`
+
+Si vous rencontrez l'erreur `linker 'link.exe' not found` lors de la compilation, c'est qu'il vous manque les outils de compilation C++.
+
+**Solution :**
+
+1. Téléchargez et installez Visual Studio Build Tools (ou Visual Studio Community).
+2. Lors de l'installation, cochez la case "Développement Desktop en C++" (Desktop development with C++).
+3. Laissez l'installation se terminer et redémarrez votre terminal (ou votre PC).
