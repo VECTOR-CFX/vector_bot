@@ -1,3 +1,6 @@
+
+<img width="1500" height="400" alt="vector_bot banner" src="https://github.com/user-attachments/assets/3b693870-9294-4c8e-845f-748f5bd09dd4" />
+
 # Vector Bot
 
 A multifunction Discord bot developed in Rust using the Poise framework and Serenity library.
