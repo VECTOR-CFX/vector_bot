@@ -46,6 +46,24 @@ A multifunction Discord bot developed in Rust using the Poise framework and Sere
   - Logs for creation, deletion, and ownership transfer in a dedicated channel.
   - Detection and logging if a channel is manually deleted.
 
+### Giveaway System
+
+- **Creation & Interface**:
+  - Command `/giveaway` (Staff only) opens an ephemeral control panel.
+  - Interactive Modal to configure: Title, Description, Duration (e.g., `1j`, `1h`, `10s`), Reward, Winner Count.
+  - Public embed creation with a "Participate" button.
+
+- **Participation & Automation**:
+  - Users join/leave by clicking the button (no reactions).
+  - Real-time participant counter on the embed.
+  - **Auto-End**: Automatically picks random winner(s) when time expires.
+  - **Smart Duration**: Supports short durations (seconds) and long durations (days) with high precision.
+
+- **Notifications & Logs**:
+  - Winners receive a direct message (DM) with their reward details.
+  - The giveaway embed updates to "Terminated" with the exact end date.
+  - Complete logs (Creation, Manual Deletion, Winners) sent to a configured log channel.
+
 ### Utility Commands
 
 - `/info`: Displays bot statistics (Uptime, Latency, RAM, CPU, Active tickets, Blacklists).
@@ -65,6 +83,7 @@ client_role_id = 123456789...
 [channels]
 log_channel_id = 123456789...
 voice_log_channel_id = 123456789...
+giveaway_log_channel_id = 123456789...
 jtc_channel_ids = [123456789..., 987654321...]
 
 [categories]
