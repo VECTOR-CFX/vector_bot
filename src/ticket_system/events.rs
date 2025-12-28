@@ -222,10 +222,29 @@ async fn create_ticket(
 
     let channel_name = format!("{}-{}", msg.author.name, count);
     
+    let permissions = vec![
+        serenity::PermissionOverwrite {
+            allow: serenity::Permissions::empty(),
+            deny: serenity::Permissions::VIEW_CHANNEL,
+            kind: serenity::PermissionOverwriteType::Role(serenity::RoleId::new(guild_id.get())),
+        },
+        serenity::PermissionOverwrite {
+            allow: serenity::Permissions::VIEW_CHANNEL | serenity::Permissions::SEND_MESSAGES | serenity::Permissions::READ_MESSAGE_HISTORY,
+            deny: serenity::Permissions::empty(),
+            kind: serenity::PermissionOverwriteType::Role(serenity::RoleId::new(data.config.roles.staff_role_id)),
+        },
+        serenity::PermissionOverwrite {
+            allow: serenity::Permissions::VIEW_CHANNEL | serenity::Permissions::SEND_MESSAGES | serenity::Permissions::READ_MESSAGE_HISTORY | serenity::Permissions::MANAGE_CHANNELS,
+            deny: serenity::Permissions::empty(),
+            kind: serenity::PermissionOverwriteType::Member(ctx.cache.current_user().id),
+        },
+    ];
+
     let builder = serenity::CreateChannel::new(channel_name)
         .kind(serenity::ChannelType::Text)
         .category(serenity::ChannelId::new(category_id))
-        .topic(format!("Ticket de {} | ID: {}", msg.author.name, user_id));
+        .topic(format!("Ticket de {} | ID: {}", msg.author.name, user_id))
+        .permissions(permissions);
 
     let channel = guild_id.create_channel(ctx, builder).await?;
 
