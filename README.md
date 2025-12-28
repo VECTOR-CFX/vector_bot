@@ -82,6 +82,7 @@ The bot uses SQLite (`database.db`) to store:
 - Ticket blacklist.
 - Temporary voice channels.
 - Ticket counters.
+- Giveaways and participants.
 
 ## Installation and Launch
 
