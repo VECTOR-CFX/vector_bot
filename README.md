@@ -1,58 +1,58 @@
 # Vector Bot
 
-Un bot Discord multifonction développé en Rust avec le framework Poise et la librairie Serenity.
+A multifunction Discord bot developed in Rust using the Poise framework and Serenity library.
 
-## Fonctionnalités
+## Features
 
-### Système de Tickets
+### Ticket System
 
-- **Création interactive** :
-  - Déclenchement par message privé (DM) au bot.
-  - Choix de la langue (Français/Anglais).
-  - Choix de la catégorie (Partenariat, Recrutement, Support, Autres).
-  - Création automatique d'un salon privé sur le serveur.
-  - Permissions configurées automatiquement (Staff + Utilisateur + Bot).
+- **Interactive Creation**:
+  - Triggered by Direct Message (DM) to the bot.
+  - Language selection (French/English).
+  - Category selection (Partnership, Recruitment, Support, Other).
+  - Automatic creation of a private channel on the server.
+  - Automatically configured permissions (Staff + User + Bot).
 
-- **Gestion** :
-  - `/rep <message>` : Permet au staff de répondre à l'utilisateur de manière anonyme ("Support: Message").
-  - `/close` : Ferme le ticket, supprime le salon, envoie un transcript complet (fichier .txt) dans les logs et notifie l'utilisateur.
-  - `/rename <nom>` : Permet de renommer le salon du ticket.
+- **Management**:
+  - `/rep <message>`: Allows staff to reply to the user anonymously ("Support: Message").
+  - `/close`: Closes the ticket, deletes the channel, sends a full transcript (.txt file) to logs, and notifies the user.
+  - `/rename <name>`: Allows renaming the ticket channel.
 
-- **Automatisation** :
-  - Relance automatique par DM après 24h d'inactivité.
-  - Fermeture automatique après 48h d'inactivité.
+- **Automation**:
+  - Automatic reminder via DM after 24h of inactivity.
+  - Automatic closure after 48h of inactivity.
 
-- **Modération des Tickets** :
-  - `/blticket @user <raison>` : Blacklist un utilisateur (l'empêche d'ouvrir des tickets).
-  - `/unblticket @user` : Retire un utilisateur de la blacklist.
-  - Vérification automatique à chaque message privé.
+- **Ticket Moderation**:
+  - `/blticket @user <reason>`: Blacklists a user (prevents them from opening tickets).
+  - `/unblticket @user`: Removes a user from the blacklist.
+  - Automatic verification on every direct message.
 
-### Système Vocal (Join to Create)
+### Voice System (Join to Create)
 
-- **Création Automatique** :
-  - Rejoindre un salon "Hub" (configuré dans `config.toml`) crée un salon vocal temporaire.
-  - Nom du salon : `🔉〢Pseudo`.
-  - Le créateur devient propriétaire.
+- **Automatic Creation**:
+  - Joining a "Hub" channel (configured in `config.toml`) creates a temporary voice channel.
+  - Channel name: `🔉〢Username`.
+  - The creator becomes the owner.
 
-- **Gestion** :
-  - Le propriétaire a les permissions de modération sur son salon (Mute, Deafen, Move, Manage Channels).
-  - Suppression automatique du salon quand il est vide.
-  - Transfert automatique de propriété si le propriétaire quitte (mais qu'il reste du monde).
+- **Management**:
+  - The owner has moderation permissions on their channel (Mute, Deafen, Move, Manage Channels).
+  - Automatic deletion of the channel when empty.
+  - Automatic ownership transfer if the owner leaves (but others remain).
 
-- **Logs** :
-  - Logs de création, suppression et transfert de propriété dans un salon dédié.
-  - Détection et log si un salon est supprimé manuellement.
+- **Logs**:
+  - Logs for creation, deletion, and ownership transfer in a dedicated channel.
+  - Detection and logging if a channel is manually deleted.
 
-### Commandes Utilitaires
+### Utility Commands
 
-- `/info` : Affiche les statistiques du bot (Uptime, Latence, RAM, CPU, Tickets actifs, Blacklists).
-- `/profil [@user]` : Affiche le profil d'un utilisateur (Date création, Date arrivée, Statut Staff/Client, Statut Blacklist).
-- `/clear <nombre>` : Supprime un nombre défini de messages (max 99).
-- `/hello` : Commande de test basique.
+- `/info`: Displays bot statistics (Uptime, Latency, RAM, CPU, Active tickets, Blacklists).
+- `/profil [@user]`: Displays a user's profile (Creation date, Join date, Staff/Client Status, Blacklist Status).
+- `/clear <number>`: Deletes a specific number of messages (max 99).
+- `/hello`: Basic test command.
 
 ## Configuration
 
-Le bot se configure via le fichier `config.toml` :
+The bot is configured via the `config.toml` file:
 
 ```toml
 [roles]
@@ -72,45 +72,45 @@ other = 123456789...
 voice_category_id = 123456789...
 ```
 
-## Base de Données
+## Database
 
-Le bot utilise SQLite (`database.db`) pour stocker :
-- Les tickets actifs.
-- La blacklist des tickets.
-- Les salons vocaux temporaires.
-- Les compteurs de tickets.
+The bot uses SQLite (`database.db`) to store:
+- Active tickets.
+- Ticket blacklist.
+- Temporary voice channels.
+- Ticket counters.
 
-## Installation et Lancement
+## Installation and Launch
 
-1. Cloner le dépôt.
-2. Créer un fichier `.env` avec :
+1. Clone the repository.
+2. Create a `.env` file with:
    ```
-   DISCORD_TOKEN=votre_token
-   DISCORD_GUILD_ID=votre_id_serveur
+   DISCORD_TOKEN=your_token
+   DISCORD_GUILD_ID=your_server_id
    ```
-   > Pour trouver l'ID de votre serveur : Activez le mode développeur dans les paramètres Discord (Avancé > Mode développeur), puis faites un clic droit sur l'icône de votre serveur > "Copier l'identifiant".
+   > To find your server ID: Enable Developer Mode in Discord settings (Advanced > Developer Mode), then right-click your server icon > "Copy Server ID".
    
-   > **IMPORTANT** : Ne partagez jamais votre fichier `.env` et ne le commitez jamais sur Git (il est déjà ignoré par `.gitignore`).
+   > **IMPORTANT**: Never share your `.env` file and never commit it to Git (it is already ignored by `.gitignore`).
 
-3. Configurer `config.toml`.
-4. Lancer avec `cargo run`.
+3. Configure `config.toml`.
+4. Run with `cargo run`.
 
-## Notes Importantes
+## Important Notes
 
-- **Intents** : Ce bot utilise actuellement les intents non privilégiés (`GatewayIntents::non_privileged()`). Si vous avez besoin de lire le contenu des messages (pour l'ancien style de commandes) ou de détecter les membres qui rejoignent, vous devrez activer les "Privileged Gateway Intents" sur le [Portail Développeur Discord](https://discord.com/developers/applications) et modifier `src/main.rs`.
+- **Intents**: This bot currently uses non-privileged intents (`GatewayIntents::non_privileged()`). If you need to read message content (for old-style commands) or detect members joining, you will need to enable "Privileged Gateway Intents" on the [Discord Developer Portal](https://discord.com/developers/applications) and modify `src/main.rs`.
 
 ## Documentation
 
-- [Guide Poise](https://github.com/serenity-rs/poise)
-- [Documentation Serenity](https://docs.rs/serenity/latest/serenity/)
-- [Livre Rust (The Rust Book)](https://doc.rust-lang.org/book/)
+- [Poise Guide](https://github.com/serenity-rs/poise)
+- [Serenity Documentation](https://docs.rs/serenity/latest/serenity/)
+- [The Rust Book](https://doc.rust-lang.org/book/)
 
-## Problème courant sur Windows : `linker 'link.exe' not found`
+## Common issue on Windows: `linker 'link.exe' not found`
 
-Si vous rencontrez l'erreur `linker 'link.exe' not found` lors de la compilation, c'est qu'il vous manque les outils de compilation C++.
+If you encounter the `linker 'link.exe' not found` error during compilation, it means you are missing C++ build tools.
 
-**Solution :**
+**Solution:**
 
-1. Téléchargez et installez Visual Studio Build Tools (ou Visual Studio Community).
-2. Lors de l'installation, cochez la case "Développement Desktop en C++" (Desktop development with C++).
-3. Laissez l'installation se terminer et redémarrez votre terminal (ou votre PC).
+1. Download and install Visual Studio Build Tools (or Visual Studio Community).
+2. During installation, check the box "Desktop development with C++".
+3. Let the installation finish and restart your terminal (or PC).
